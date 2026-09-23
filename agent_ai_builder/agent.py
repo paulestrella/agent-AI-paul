@@ -9,3 +9,13 @@ class Agente:
         self.historial = [
             {"role": "system", "content": personalidad}
         ]
+
+    def responder(self, mensaje: str):
+        self.historial.append({"role": "user", "content": mensaje})
+        respuesta = self.cliente.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=self.historial,
+        )
+        contenido = respuesta.choices[0].message.content
+        self.historial.append({"role": "assistant", "content": contenido})
+        return contenido
