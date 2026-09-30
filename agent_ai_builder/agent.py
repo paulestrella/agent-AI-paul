@@ -6,7 +6,13 @@ from groq import Groq
 class Agente:
     def __init__(self, personalidad: str):
         self.nombre_negocio = "Café Santo Domingo"
-        self.cliente = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "No se encontro GROQ_API_KEY. Configurala en el entorno o en el archivo .env."
+            )
+
+        self.cliente = Groq(api_key=api_key)
         self.historial = [
             {"role": "system", "content": personalidad}
         ]
