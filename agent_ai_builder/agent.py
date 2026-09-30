@@ -19,3 +19,8 @@ class Agente:
         contenido = respuesta.choices[0].message.content
         self.historial.append({"role": "assistant", "content": contenido})
         return contenido
+
+    def mostrar_historial(self):
+        for mensaje in self.historial:
+            if mensaje["role"] != "system":
+                print(f"{mensaje['role']}: {mensaje['content']}")
