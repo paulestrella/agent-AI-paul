@@ -32,6 +32,10 @@ class Agente:
             tools=HERRAMIENTAS,
             tool_choice="auto",
         )
+        print(
+            f"[tokens] enviados: {respuesta.usage.prompt_tokens}, "
+            f"generados: {respuesta.usage.completion_tokens}"
+        )
         mensaje_asistente = respuesta.choices[0].message
         llamadas = mensaje_asistente.tool_calls
 
