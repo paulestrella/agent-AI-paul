@@ -1,6 +1,9 @@
+import json
 import os
 
 from groq import Groq
+
+from agent_ai_builder.tools import HERRAMIENTAS, ejecutar_herramienta
 
 
 class Agente:
@@ -19,13 +22,48 @@ class Agente:
 
     def responder(self, mensaje: str):
         self.historial.append({"role": "user", "content": mensaje})
-        respuesta = self.cliente.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=self.historial,
-        )
-        contenido = respuesta.choices[0].message.content
-        self.historial.append({"role": "assistant", "content": contenido})
-        return contenido
+
+        while True:
+            respuesta = self.cliente.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=self.historial,
+                tools=HERRAMIENTAS,
+                tool_choice="auto",
+            )
+            mensaje_asistente = respuesta.choices[0].message
+            llamadas = mensaje_asistente.tool_calls
+
+            if not llamadas:
+                contenido = mensaje_asistente.content or ""
+                self.historial.append(
+                    {"role": "assistant", "content": contenido}
+                )
+                return contenido
+
+            self.historial.append(
+                {
+                    "role": "assistant",
+                    "content": mensaje_asistente.content,
+                    "tool_calls": [
+                        llamada.model_dump(exclude_none=True)
+                        for llamada in llamadas
+                    ],
+                }
+            )
+
+            for llamada in llamadas:
+                argumentos = json.loads(llamada.function.arguments)
+                resultado = ejecutar_herramienta(
+                    llamada.function.name,
+                    argumentos,
+                )
+                self.historial.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": llamada.id,
+                        "content": resultado,
+                    }
+                )
 
     def mostrar_historial(self):
         for mensaje in self.historial:
