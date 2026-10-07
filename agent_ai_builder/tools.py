@@ -10,6 +10,46 @@ _PRODUCTS = {
     for item in category["items"]
 }
 
+HERRAMIENTAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calcular_pedido",
+            "description": (
+                "Úsala siempre que el cliente pregunte cuánto cuesta o cuánto "
+                "sería el precio de uno o varios productos. Recibe los productos "
+                "y sus cantidades para calcular subtotales y el total referencial."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "items": {
+                        "type": "array",
+                        "description": "Productos y cantidades del pedido.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "producto": {
+                                    "type": "string",
+                                    "description": "Nombre del producto del menú.",
+                                },
+                                "cantidad": {
+                                    "type": "integer",
+                                    "description": "Cantidad solicitada.",
+                                },
+                            },
+                            "required": ["producto", "cantidad"],
+                            "additionalProperties": False,
+                        },
+                    }
+                },
+                "required": ["items"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
+
 
 def calcular_pedido(items: list[dict[str, str | int]]) -> str:
     detalles = []
@@ -35,3 +75,12 @@ def calcular_pedido(items: list[dict[str, str | int]]) -> str:
         "Precios referenciales; confirma las tarifas vigentes con el negocio."
     )
 
+
+def ejecutar_herramienta(
+    nombre: str,
+    argumentos: dict[str, list[dict[str, str | int]]],
+) -> str:
+    if nombre == "calcular_pedido":
+        return calcular_pedido(argumentos["items"])
+
+    return f"La herramienta '{nombre}' no existe."
