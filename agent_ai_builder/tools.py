@@ -1,12 +1,9 @@
-import json
-from pathlib import Path
+from .datos import DATOS_NEGOCIO
 
 
-_BUSINESS_DATA_PATH = Path(__file__).with_name("business_data.json")
-_BUSINESS_DATA = json.loads(_BUSINESS_DATA_PATH.read_text(encoding="utf-8"))
 _PRODUCTS = {
     item["name"].strip().lower(): item
-    for category in _BUSINESS_DATA["catalog"]
+    for category in DATOS_NEGOCIO["catalog"]
     for item in category["items"]
 }
 
