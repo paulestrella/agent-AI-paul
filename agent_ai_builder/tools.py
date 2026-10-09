@@ -1,10 +1,31 @@
 from .datos import DATOS_NEGOCIO
+from .pedidos import registrar_pedido
 
 
 _PRODUCTS = {
     item["name"].strip().lower(): item
     for category in DATOS_NEGOCIO["catalog"]
     for item in category["items"]
+}
+
+_ITEMS_SCHEMA = {
+    "type": "array",
+    "description": "Productos y cantidades del pedido.",
+    "items": {
+        "type": "object",
+        "properties": {
+            "producto": {
+                "type": "string",
+                "description": "Nombre del producto del menú.",
+            },
+            "cantidad": {
+                "type": "integer",
+                "description": "Cantidad solicitada.",
+            },
+        },
+        "required": ["producto", "cantidad"],
+        "additionalProperties": False,
+    },
 }
 
 HERRAMIENTAS = [
@@ -20,31 +41,30 @@ HERRAMIENTAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "items": {
-                        "type": "array",
-                        "description": "Productos y cantidades del pedido.",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "producto": {
-                                    "type": "string",
-                                    "description": "Nombre del producto del menú.",
-                                },
-                                "cantidad": {
-                                    "type": "integer",
-                                    "description": "Cantidad solicitada.",
-                                },
-                            },
-                            "required": ["producto", "cantidad"],
-                            "additionalProperties": False,
-                        },
-                    }
+                    "items": _ITEMS_SCHEMA,
                 },
                 "required": ["items"],
                 "additionalProperties": False,
             },
         },
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "registrar_pedido",
+            "description": (
+                "Registra en pedidos.xlsx los productos y cantidades cuando "
+                "el cliente confirme que desea realizar el pedido. No la uses "
+                "para consultas de precios ni antes de confirmar el pedido."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {"items": _ITEMS_SCHEMA},
+                "required": ["items"],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 
@@ -79,5 +99,7 @@ def ejecutar_herramienta(
 ) -> str:
     if nombre == "calcular_pedido":
         return calcular_pedido(argumentos["items"])
+    if nombre == "registrar_pedido":
+        return registrar_pedido(argumentos["items"], _PRODUCTS)
 
     return f"La herramienta '{nombre}' no existe."

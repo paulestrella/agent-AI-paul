@@ -7,6 +7,8 @@ añadir pruebas sin ejecutar el programa principal.
 La hoja de cálculo con los datos del negocio se guarda en `datos/`.
 `agent_ai_builder/datos.py` es el único módulo responsable de cargarla; los
 prompts y las herramientas consumen los datos desde ese módulo.
+Los pedidos confirmados por el cliente se registran en `datos/pedidos.xlsx`;
+ese archivo local está excluido del control de versiones.
 
 ## Configuracion
 
