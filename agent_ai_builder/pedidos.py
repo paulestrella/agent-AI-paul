@@ -70,7 +70,7 @@ def registrar_pedido(
                 datetime.now().astimezone().isoformat(timespec="seconds"),
                 json.dumps(detalles, ensure_ascii=False),
                 total,
-                "Pendiente de confirmación",
+                "Confirmado por el cliente",
             )
         )
         libro.save(_ARCHIVO_PEDIDOS)
@@ -78,6 +78,7 @@ def registrar_pedido(
         libro.close()
 
     return (
-        f"Pedido {pedido_id} registrado con total referencial de RD${total}. "
-        "El negocio debe confirmar disponibilidad y precio."
+        f"Pedido {pedido_id} confirmado por el cliente y registrado con total "
+        f"referencial de RD${total}. El negocio debe confirmar disponibilidad "
+        "y precio."
     )

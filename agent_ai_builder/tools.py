@@ -53,9 +53,9 @@ HERRAMIENTAS = [
         "function": {
             "name": "registrar_pedido",
             "description": (
-                "Registra en pedidos.xlsx los productos y cantidades cuando "
-                "el cliente confirme que desea realizar el pedido. No la uses "
-                "para consultas de precios ni antes de confirmar el pedido."
+                "Guarda el pedido en pedidos.xlsx cuando el cliente solicite "
+                "registrarlo y confirme explícitamente los productos y "
+                "cantidades. No la uses para consultas de precios."
             ),
             "parameters": {
                 "type": "object",
