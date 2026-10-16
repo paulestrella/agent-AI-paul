@@ -9,9 +9,10 @@ MODELO = "openai/gpt-oss-120b"
 
 
 class Agente:
-    def __init__(self, personalidad: str):
+    def __init__(self, personalidad: str, cliente_id: str = "terminal"):
         self.nombre_negocio = "Café Santo Domingo"
         self.nombre_usuario = "Usuario"
+        self.cliente_id = cliente_id
         api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             raise ValueError(
@@ -62,6 +63,7 @@ class Agente:
             resultado = ejecutar_herramienta(
                 llamada.function.name,
                 argumentos,
+                self.cliente_id,
             )
             self.historial.append(
                 {

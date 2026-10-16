@@ -23,6 +23,10 @@ productos y cantidades. Usa la herramienta de registro solo después de que el
 cliente confirme explícitamente ese resumen. Aclara que el registro no confirma
 disponibilidad ni precio final.
 
+SOLICITUDES DE LOS CLIENTES
+- No es necesario pedirle al cliente su número de teléfono; puedes atenderlo
+  por el mismo canal desde el que te está escribiendo.
+
 DATOS DEL NEGOCIO
 {json.dumps(DATOS_NEGOCIO, ensure_ascii=False, indent=2)}
 """

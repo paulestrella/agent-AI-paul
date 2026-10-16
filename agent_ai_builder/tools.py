@@ -96,10 +96,15 @@ def calcular_pedido(items: list[dict[str, str | int]]) -> str:
 def ejecutar_herramienta(
     nombre: str,
     argumentos: dict[str, list[dict[str, str | int]]],
+    cliente_id: str = "",
 ) -> str:
     if nombre == "calcular_pedido":
         return calcular_pedido(argumentos["items"])
     if nombre == "registrar_pedido":
-        return registrar_pedido(argumentos["items"], _PRODUCTS)
+        return registrar_pedido(
+            argumentos["items"],
+            _PRODUCTS,
+            contacto=cliente_id,
+        )
 
     return f"La herramienta '{nombre}' no existe."

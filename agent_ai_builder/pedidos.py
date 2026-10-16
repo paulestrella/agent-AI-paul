@@ -14,6 +14,15 @@ _ARCHIVO_PEDIDOS = (
 _ENCABEZADOS = (
     "ID",
     "Fecha y hora",
+    "Cliente",
+    "Contacto",
+    "Detalle",
+    "Total referencial (RD$)",
+    "Estado",
+)
+_ENCABEZADOS_ANTERIORES = (
+    "ID",
+    "Fecha y hora",
     "Productos",
     "Total referencial (RD$)",
     "Estado",
@@ -23,6 +32,7 @@ _ENCABEZADOS = (
 def registrar_pedido(
     items: list[dict[str, str | int]],
     productos: dict[str, Producto],
+    contacto: str = "",
 ) -> str:
     detalles = []
     total = 0
@@ -57,6 +67,20 @@ def registrar_pedido(
     if _ARCHIVO_PEDIDOS.exists():
         libro = load_workbook(_ARCHIVO_PEDIDOS)
         hoja = libro.active
+        encabezados = tuple(
+            hoja.cell(row=1, column=columna).value
+            for columna in range(1, hoja.max_column + 1)
+        )
+        if encabezados == _ENCABEZADOS_ANTERIORES:
+            hoja.insert_cols(3, amount=2)
+            for columna, encabezado in enumerate(_ENCABEZADOS, start=1):
+                hoja.cell(row=1, column=columna, value=encabezado)
+        elif encabezados != _ENCABEZADOS:
+            libro.close()
+            raise ValueError(
+                "La hoja de pedidos tiene encabezados incompatibles; "
+                "no se puede registrar el pedido con seguridad."
+            )
     else:
         libro = Workbook()
         hoja = libro.active
@@ -68,6 +92,8 @@ def registrar_pedido(
             (
                 pedido_id,
                 datetime.now().astimezone().isoformat(timespec="seconds"),
+                "",
+                contacto,
                 json.dumps(detalles, ensure_ascii=False),
                 total,
                 "Confirmado por el cliente",
