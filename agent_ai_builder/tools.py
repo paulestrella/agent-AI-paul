@@ -1,5 +1,4 @@
-from .datos import DATOS_NEGOCIO
-from .pedidos import registrar_pedido
+from .datos import DATOS_NEGOCIO, registrar_pedido
 
 
 _PRODUCTS = {

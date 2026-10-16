@@ -25,12 +25,11 @@ pedidos de Excel a una base de datos.
   `self.historial`. Una instancia compartida entre clientes mezclaría sus
   conversaciones; una instancia en memoria tampoco conserva el estado tras un
   reinicio ni lo comparte entre procesos.
-- [pedidos.py](./agent_ai_builder/pedidos.py) escribe los pedidos en
-  `datos/pedidos.xlsx`. El archivo local no es un almacenamiento seguro para
-  escrituras concurrentes o varias réplicas del servidor, y puede perderse si
-  la plataforma usa un sistema de archivos efímero.
-- [datos.py](./agent_ai_builder/datos.py) carga la información del negocio desde
-  `datos/datos_negocio_cafe_santo_domingo.xlsx` al importar el módulo.
+- [datos.py](./agent_ai_builder/datos.py) carga la información del negocio y
+  registra pedidos en `datos/pedidos.xlsx`. Un candado serializa las escrituras
+  de hilos dentro de un mismo proceso; el XLSX no coordina varias réplicas o
+  procesos y puede perderse si la plataforma usa un sistema de archivos
+  efímero.
 - [pyproject.toml](./pyproject.toml) declara Groq, OpenPyXL y python-dotenv, pero
   todavía no declara un servidor HTTP ni una base de datos.
 
