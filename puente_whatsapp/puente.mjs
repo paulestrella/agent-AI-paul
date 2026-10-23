@@ -7,6 +7,12 @@ import pino from "pino";
 import QRCode from "qrcode";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  describirMultimedia,
+  esMensajeAntiguo,
+  identificarCliente,
+  resumirMensaje,
+} from "./logica.mjs";
 
 const DIRECTORIO = path.dirname(fileURLToPath(import.meta.url));
 const DIRECTORIO_SESION = path.join(DIRECTORIO, "sesion");
@@ -15,12 +21,13 @@ const URL_AGENTE = new URL(
   process.env.URL_AGENTE || "http://127.0.0.1:8000/chat",
 );
 const PUENTE_TOKEN = process.env.PUENTE_TOKEN?.trim();
-const PERMITIDOS = new Set(
-  (process.env.PERMITIDOS || "")
-    .split(/[,\s]+/)
-    .map((numero) => numero.replace(/\D/g, ""))
-    .filter(Boolean),
-);
+const enviados = new Set();
+const permitidos = new Set();
+(process.env.PERMITIDOS || "")
+  .split(/[,\s]+/)
+  .map((numero) => numero.replace(/\D/g, ""))
+  .filter(Boolean)
+  .forEach((numero) => permitidos.add(numero));
 const DIAGNOSTICO = process.env.DIAGNOSTICO?.toLowerCase() === "true";
 const MOTIVOS = {
   408: "sin internet o se agotó el tiempo",
@@ -28,7 +35,6 @@ const MOTIVOS = {
   515: "reinicio normal después de vincular",
 };
 const logger = pino({ level: DIAGNOSTICO ? "debug" : "silent" });
-const mensajesProcesados = new Set();
 let reconexionProgramada = false;
 
 if (!["http:", "https:"].includes(URL_AGENTE.protocol)) {
@@ -39,44 +45,49 @@ if (!URL_AGENTE.pathname.replace(/\/+$/, "").endsWith("/chat")) {
   URL_AGENTE.pathname = `${URL_AGENTE.pathname.replace(/\/+$/, "")}/chat`;
 }
 
-if (PERMITIDOS.size === 0) {
+if (permitidos.size === 0) {
   console.warn(
     "PERMITIDOS está vacío: el puente se conectará, pero no responderá mensajes.",
   );
 }
 
-function extraerTexto(mensaje) {
-  let contenido = mensaje.message;
-
-  while (
-    contenido?.ephemeralMessage?.message ||
-    contenido?.viewOnceMessage?.message ||
-    contenido?.viewOnceMessageV2?.message
-  ) {
-    contenido =
-      contenido.ephemeralMessage?.message ||
-      contenido.viewOnceMessage?.message ||
-      contenido.viewOnceMessageV2?.message;
-  }
-
-  return (
-    contenido?.conversation ||
-    contenido?.extendedTextMessage?.text ||
-    contenido?.imageMessage?.caption ||
-    contenido?.videoMessage?.caption ||
-    contenido?.buttonsResponseMessage?.selectedDisplayText ||
-    contenido?.listResponseMessage?.title ||
-    contenido?.templateButtonReplyMessage?.selectedDisplayText ||
-    ""
-  ).trim();
+function crearContexto(mensaje) {
+  const cliente = identificarCliente(mensaje);
+  return {
+    cliente,
+    jid: mensaje.key?.remoteJid,
+    idMensaje: mensaje.key?.id,
+    timestamp: mensaje.messageTimestamp,
+    resumen: resumirMensaje(mensaje),
+    esMultimedia: describirMultimedia(mensaje) !== null,
+  };
 }
 
-function obtenerNumero(jid) {
-  if (!jid?.endsWith("@s.whatsapp.net")) {
-    return null;
+function decidirSiProcesar(contexto, mensaje) {
+  const esMensajeDirecto =
+    typeof contexto.jid === "string" &&
+    contexto.jid.endsWith("@s.whatsapp.net");
+  const resumenVacio =
+    contexto.resumen === "El cliente envió un mensaje sin texto reconocible.";
+
+  if (
+    mensaje.key?.fromMe ||
+    !esMensajeDirecto ||
+    !contexto.idMensaje ||
+    !contexto.cliente.telefono ||
+    !permitidos.has(contexto.cliente.telefono) ||
+    esMensajeAntiguo(contexto.timestamp) ||
+    (!contexto.esMultimedia && resumenVacio) ||
+    enviados.has(contexto.idMensaje)
+  ) {
+    return false;
   }
 
-  return jid.slice(0, jid.indexOf("@")).split(":")[0].replace(/\D/g, "");
+  enviados.add(contexto.idMensaje);
+  if (enviados.size > 1_000) {
+    enviados.delete(enviados.values().next().value);
+  }
+  return true;
 }
 
 async function solicitarRespuesta(clienteId, mensaje) {
@@ -105,36 +116,21 @@ async function solicitarRespuesta(clienteId, mensaje) {
 }
 
 async function procesarMensaje(socket, mensaje) {
-  const jid = mensaje.key?.remoteJid;
-  const numero = obtenerNumero(jid);
-  const texto = extraerTexto(mensaje);
-  const idMensaje = mensaje.key?.id;
-
-  if (
-    mensaje.key?.fromMe ||
-    !numero ||
-    !PERMITIDOS.has(numero) ||
-    !texto ||
-    !idMensaje
-  ) {
+  const contexto = crearContexto(mensaje);
+  if (!decidirSiProcesar(contexto, mensaje)) {
     return;
-  }
-
-  if (mensajesProcesados.has(idMensaje)) {
-    return;
-  }
-  mensajesProcesados.add(idMensaje);
-  if (mensajesProcesados.size > 1_000) {
-    mensajesProcesados.delete(mensajesProcesados.values().next().value);
   }
 
   try {
-    const respuesta = await solicitarRespuesta(numero, texto);
-    await socket.sendMessage(jid, { text: respuesta });
+    const respuesta = await solicitarRespuesta(
+      contexto.cliente.id,
+      contexto.resumen,
+    );
+    await socket.sendMessage(contexto.jid, { text: respuesta });
   } catch (error) {
     console.error("No se pudo procesar o responder el mensaje:", error);
     try {
-      await socket.sendMessage(jid, {
+      await socket.sendMessage(contexto.jid, {
         text: "No pude procesar tu mensaje en este momento. Inténtalo de nuevo más tarde.",
       });
     } catch (errorEnvio) {
