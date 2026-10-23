@@ -9,4 +9,10 @@ wheels/
 # Virtual environments
 .venv
 .env
+!.env.example
 datos/pedidos.xlsx
+
+# puente de whatsapp
+node_modules/
+puente_whatsapp/sesion/
+puente_whatsapp/qr.png
