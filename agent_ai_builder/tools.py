@@ -1,4 +1,5 @@
 from .datos import DATOS_NEGOCIO, registrar_pedido
+from .limpieza import MAX_DETALLE, MAX_NOMBRE, limpiar_texto
 
 
 _PRODUCTS = {
@@ -67,12 +68,22 @@ HERRAMIENTAS = [
 ]
 
 
+def _limpiar_items(items: list[dict[str, str | int]]) -> list[dict[str, str | int]]:
+    return [
+        {
+            "producto": limpiar_texto(item["producto"], MAX_NOMBRE),
+            "cantidad": item["cantidad"],
+        }
+        for item in items
+    ]
+
+
 def calcular_pedido(items: list[dict[str, str | int]]) -> str:
     detalles = []
     total = 0
 
-    for item in items:
-        nombre_producto = item["producto"].strip()
+    for item in _limpiar_items(items):
+        nombre_producto = item["producto"]
         producto = _PRODUCTS.get(nombre_producto.lower())
         if producto is None:
             return f"El producto '{nombre_producto}' no está en el menú."
@@ -85,10 +96,11 @@ def calcular_pedido(items: list[dict[str, str | int]]) -> str:
         )
 
     detalle_pedido = "\n".join(detalles)
-    return (
+    return limpiar_texto(
         f"Detalle del pedido:\n{detalle_pedido}\n"
         f"Total: RD${total}\n"
-        "Precios referenciales; confirma las tarifas vigentes con el negocio."
+        "Precios referenciales; confirma las tarifas vigentes con el negocio.",
+        MAX_DETALLE,
     )
 
 
@@ -100,10 +112,13 @@ def ejecutar_herramienta(
     if nombre == "calcular_pedido":
         return calcular_pedido(argumentos["items"])
     if nombre == "registrar_pedido":
-        return registrar_pedido(
-            argumentos["items"],
-            _PRODUCTS,
-            contacto=cliente_id,
+        return limpiar_texto(
+            registrar_pedido(
+                _limpiar_items(argumentos["items"]),
+                _PRODUCTS,
+                contacto=cliente_id,
+            ),
+            MAX_DETALLE,
         )
 
     return f"La herramienta '{nombre}' no existe."
