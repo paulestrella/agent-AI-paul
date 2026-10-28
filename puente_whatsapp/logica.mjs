@@ -1,5 +1,6 @@
 export const EDAD_MAXIMA_SEG = 120;
 export const MARCA_BOT = "[Agente]";
+export const MAX_ENTRADA = 500;
 
 export const TIPOS_MULTIMEDIA = Object.freeze({
   imageMessage: "El cliente envió una imagen.",
@@ -126,4 +127,84 @@ export function esMensajeAntiguo(
 
 export function marcarMensajeBot(texto) {
   return `${MARCA_BOT} ${String(texto)}`;
+}
+
+function jidCanonico(jid) {
+  if (typeof jid !== "string") {
+    return "";
+  }
+
+  const [usuario, dominio] = jid.split("@", 2);
+  return dominio ? `${usuario.split(":", 1)[0]}@${dominio}` : "";
+}
+
+export function resumir(mensaje, _tipo) {
+  return resumirMensaje(mensaje, MAX_ENTRADA);
+}
+
+export function crearContexto(sock, permitidos, enviados, ahoraSegundos) {
+  const usuario = sock?.user ?? {};
+  const jidsPropios = new Set(
+    [usuario.id, usuario.lid].map(jidCanonico).filter(Boolean),
+  );
+  const permitidosNormalizados = new Set(permitidos);
+
+  return {
+    ahoraSegundos,
+    enviados,
+    jidsPropios,
+    permitidos: permitidosNormalizados,
+  };
+}
+
+export function decidir(mensaje, tipo, contexto) {
+  const clave = mensaje?.key ?? {};
+  const jid = clave.remoteJid ?? "";
+  const id = clave.id;
+  const esMiChat = Boolean(clave.fromMe && contexto.jidsPropios.has(jidCanonico(jid)));
+  const ignorar = (motivo) => ({ accion: "ignorar", motivo });
+
+  if (tipo !== "notify") {
+    return ignorar("tipo de evento no notificable");
+  }
+  if (!id) {
+    return ignorar("mensaje sin identificador");
+  }
+  if (contexto.enviados.has(id)) {
+    return ignorar("eco de un mensaje enviado por el puente");
+  }
+  if (clave.fromMe && !esMiChat) {
+    return ignorar("mensaje propio fuera del chat personal");
+  }
+  if (!esMiChat && !jid.endsWith("@s.whatsapp.net")) {
+    return ignorar("chat grupal o JID no directo");
+  }
+  if (esMensajeAntiguo(mensaje.messageTimestamp, contexto.ahoraSegundos)) {
+    return ignorar("mensaje antiguo");
+  }
+
+  const cliente = identificarCliente(mensaje);
+  if (!cliente.telefono) {
+    return ignorar("no se pudo identificar el número del cliente");
+  }
+  if (
+    !esMiChat &&
+    !contexto.permitidos.has("*") &&
+    !contexto.permitidos.has(cliente.telefono)
+  ) {
+    return ignorar("cliente fuera de la lista permitida");
+  }
+
+  const texto = resumir(mensaje, tipo);
+  if (texto === "El cliente envió un mensaje sin texto reconocible.") {
+    return ignorar("mensaje sin texto o multimedia reconocible");
+  }
+
+  return {
+    accion: "responder",
+    clienteId: cliente.id,
+    esMiChat,
+    jid,
+    texto,
+  };
 }
