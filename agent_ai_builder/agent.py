@@ -25,6 +25,14 @@ class Agente:
         ]
 
     def responder(self, mensaje: str):
+        largo_inicial = len(self.historial)
+        try:
+            return self._responder(mensaje)
+        except Exception:
+            del self.historial[largo_inicial:]
+            raise
+
+    def _responder(self, mensaje: str):
         self.historial.append({"role": "user", "content": mensaje})
 
         respuesta = self.cliente.chat.completions.create(

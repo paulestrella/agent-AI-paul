@@ -21,3 +21,9 @@ def responder_a(cliente_id: str, mensaje: str) -> str:
     agente, candado = _obtener_agente_y_candado(cliente_id)
     with candado:
         return agente.responder(mensaje)
+
+
+def reiniciar_cliente(cliente_id: str) -> None:
+    with _candado_general:
+        _agente.pop(cliente_id, None)
+        _candados.pop(cliente_id, None)
