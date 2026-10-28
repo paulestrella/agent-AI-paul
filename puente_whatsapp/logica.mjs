@@ -176,8 +176,10 @@ export function decidir(mensaje, tipo, contexto) {
   if (clave.fromMe && !esMiChat) {
     return ignorar("mensaje propio fuera del chat personal");
   }
-  if (!esMiChat && !jid.endsWith("@s.whatsapp.net")) {
-    return ignorar("chat grupal o JID no directo");
+  const esChatDirecto =
+    jid.endsWith("@s.whatsapp.net") || jid.endsWith("@lid");
+  if (!esMiChat && !esChatDirecto) {
+    return ignorar("chat grupal o JID no directo compatible");
   }
   if (esMensajeAntiguo(mensaje.messageTimestamp, contexto.ahoraSegundos)) {
     return ignorar("mensaje antiguo");

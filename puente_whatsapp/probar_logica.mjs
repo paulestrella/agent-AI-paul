@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import {
   EDAD_MAXIMA_SEG,
   MARCA_BOT,
+  MAX_ENTRADA,
   TIPOS_MULTIMEDIA,
+  crearContexto,
+  decidir,
   describirMultimedia,
   esMensajeAntiguo,
   extraerDigitosJid,
@@ -36,6 +39,24 @@ function mensaje({
     message: contenido,
     messageTimestamp: timestamp,
   };
+}
+
+function contexto({
+  permitidos = new Set(["*"]),
+  enviados = new Set(),
+  ahoraSegundos = CONTEXTO.ahoraSegundos,
+} = {}) {
+  return crearContexto(
+    {
+      user: {
+        id: "18005559999:1@s.whatsapp.net",
+        lid: "99887766554433:1@lid",
+      },
+    },
+    permitidos,
+    enviados,
+    ahoraSegundos,
+  );
 }
 
 const CASOS = [
@@ -164,6 +185,87 @@ const CASOS = [
     nombre: "antepone la marca del bot",
     ejecutar: () =>
       assert.equal(marcarMensajeBot("Hola"), `${MARCA_BOT} Hola`),
+  },
+  {
+    nombre: "exporta el límite de entrada usado por la atención",
+    ejecutar: () => assert.equal(MAX_ENTRADA, 500),
+  },
+  {
+    nombre: "acepta un remitente individual cuando el modo está abierto",
+    ejecutar: () => {
+      const resultado = decidir(mensaje(), "notify", contexto());
+      assert.equal(resultado.accion, "responder");
+      assert.equal(resultado.clienteId, "18005551234");
+      assert.equal(resultado.jid, CONTEXTO.jidCliente);
+    },
+  },
+  {
+    nombre: "acepta clientes diferentes como conversaciones independientes",
+    ejecutar: () => {
+      const primera = decidir(
+        mensaje({ id: "cliente-1", jid: "18005550001@s.whatsapp.net" }),
+        "notify",
+        contexto(),
+      );
+      const segunda = decidir(
+        mensaje({ id: "cliente-2", jid: "18005550002@s.whatsapp.net" }),
+        "notify",
+        contexto(),
+      );
+      assert.equal(primera.accion, "responder");
+      assert.equal(segunda.accion, "responder");
+      assert.notEqual(primera.clienteId, segunda.clienteId);
+    },
+  },
+  {
+    nombre: "acepta chats individuales identificados con @lid en modo abierto",
+    ejecutar: () => {
+      const jid = "99887766554431@lid";
+      const resultado = decidir(
+        mensaje({ id: "lid-cliente", jid }),
+        "notify",
+        contexto(),
+      );
+      assert.equal(resultado.accion, "responder");
+      assert.equal(resultado.clienteId, "99887766554431");
+      assert.equal(resultado.jid, jid);
+    },
+  },
+  {
+    nombre: "rechaza remitentes que no están permitidos en modo cerrado",
+    ejecutar: () => {
+      const resultado = decidir(
+        mensaje({ jid: "18005550001@s.whatsapp.net" }),
+        "notify",
+        contexto({ permitidos: new Set(["18005550002"]) }),
+      );
+      assert.equal(resultado.accion, "ignorar");
+      assert.equal(resultado.motivo, "cliente fuera de la lista permitida");
+    },
+  },
+  {
+    nombre: "sigue ignorando mensajes de grupos incluso en modo abierto",
+    ejecutar: () => {
+      const resultado = decidir(
+        mensaje({ jid: "120363000000000000@g.us" }),
+        "notify",
+        contexto(),
+      );
+      assert.equal(resultado.accion, "ignorar");
+      assert.equal(resultado.motivo, "chat grupal o JID no directo compatible");
+    },
+  },
+  {
+    nombre: "ignora ecos de mensajes enviados previamente",
+    ejecutar: () => {
+      const resultado = decidir(
+        mensaje({ id: "eco-enviado" }),
+        "notify",
+        contexto({ enviados: new Set(["eco-enviado"]) }),
+      );
+      assert.equal(resultado.accion, "ignorar");
+      assert.equal(resultado.motivo, "eco de un mensaje enviado por el puente");
+    },
   },
 ];
 
